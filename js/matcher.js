@@ -104,8 +104,11 @@
     ["1N914", "1N4148", "1N914B"],
     // Diodos de germanio
     ["1N34A", "1N34", "1N60", "OA90", "D9E", "1N270"],
+    // Rectificadores (protección de polaridad / fuente)
+    ["1N4001", "1N4002", "1N4003", "1N4004", "1N4005", "1N4006", "1N4007",
+     "1N5400", "1N5402", "1N5404", "1N5406", "1N5408"],
     // NPN alta ganancia (fuzz/muff)
-    ["2N5088", "2N5089", "MPSA18", "BC549C"],
+    ["2N5088", "2N5089", "MPSA18", "BC549", "BC549C", "BC550"],
     // NPN uso general (buffers, boosters)
     ["2N3904", "2SC1815", "BC547", "BC548", "2N2222", "PN2222"],
     // Darlington NPN (Bazz Fuss)
