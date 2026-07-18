@@ -103,14 +103,18 @@
     // Diodos de señal silicio
     ["1N914", "1N4148", "1N914B"],
     // Diodos de germanio
-    ["1N34A", "1N34", "1N60", "OA90", "D9E", "1N270"],
+    ["1N34A", "1N34", "1N60", "OA90", "D9E", "1N270", "1N695"],
     // Rectificadores (protección de polaridad / fuente)
     ["1N4001", "1N4002", "1N4003", "1N4004", "1N4005", "1N4006", "1N4007",
      "1N5400", "1N5402", "1N5404", "1N5406", "1N5408"],
     // NPN alta ganancia (fuzz/muff)
     ["2N5088", "2N5089", "MPSA18", "BC549", "BC549C", "BC550"],
     // NPN uso general (buffers, boosters)
-    ["2N3904", "2SC1815", "BC547", "BC548", "2N2222", "PN2222"],
+    ["2N3904", "2SC1815", "C1815", "BC547", "BC548", "2N2222", "PN2222", "C945", "2SC828", "S9014"],
+    // PNP silicio uso general
+    ["2N3906", "BC556", "BC557", "BC558", "A1015", "2SA1015", "S8550", "S9012", "S9015"],
+    // MOSFET pequeña señal
+    ["BS170", "2N7000"],
     // Darlington NPN (Bazz Fuss)
     ["MPSA13", "MPSA14", "BC517"],
     // PNP germanio (Fuzz Face, Rangemaster)
@@ -118,9 +122,10 @@
     // JFET canal N uso general
     ["2N5457", "2N5458", "MPF102", "J201", "2N5952"],
     // Opamp dual estándar
-    ["JRC4558D", "JRC4558", "RC4558", "RC4558P", "4558", "4558D", "TL072", "TL072CP", "NE5532"],
+    ["JRC4558D", "JRC4558", "RC4558", "RC4558P", "4558", "4558D", "TL072", "TL072CP",
+     "NE5532", "LM1458", "MC1458", "JRC4559", "RC4559", "4559", "TL082"],
     // Opamp simple estándar
-    ["LM741", "UA741", "TL071", "LM308N", "LM308", "OP07"],
+    ["LM741", "UA741", "TL071", "TL061", "LM308N", "LM308", "OP07"],
     // Charge pump
     ["TC1044SCPA", "TC1044", "ICL7660S", "LT1054", "MAX1044"],
   ];
@@ -184,53 +189,135 @@
     }
   }
 
+  /** Valor numérico normalizado para tipos donde tiene sentido "cercano". */
+  function numericValue(type, value) {
+    switch (type) {
+      case "resistor": return parseResistor(value);
+      case "capacitor": return parseCapacitor(value);
+      case "pot": {
+        var p = parsePot(value);
+        return p ? p.ohms : null;
+      }
+      default: return null;
+    }
+  }
+
+  var DEFAULT_SUB_TOLERANCE = 0.25; // ±25% ≈ un paso de la serie E12
+
   /**
-   * Evalúa un pedal contra el inventario.
+   * Evalúa un pedal contra el inventario, asignando stock real (un mismo
+   * componente no puede cubrir dos líneas a la vez).
+   *
    * @param pedal  { id, name, circuit: [{type, value, qty, note?}] }
    * @param inventory  [{ type, value, qty }]
    * @param hardware  líneas extra (jacks, caja...) o null para excluirlas
-   * @returns { pct, totalNeeded, totalCovered, lines: [...] }
+   * @param opts  { substitutes: bool, tolerance: number } — con substitutes
+   *              activado, resistencias/capacitores/pots de valor cercano
+   *              (dentro de tolerance) cubren faltantes como "aproximados".
+   * @returns { pct, pctExact, totalNeeded, totalCovered, totalApprox, lines }
    */
-  function evaluatePedal(pedal, inventory, hardware) {
+  function evaluatePedal(pedal, inventory, hardware, opts) {
+    opts = opts || {};
+    var tolerance = opts.tolerance || DEFAULT_SUB_TOLERANCE;
     var bom = pedal.circuit.slice();
     if (hardware && hardware.length) bom = bom.concat(hardware);
 
-    var totalNeeded = 0;
-    var totalCovered = 0;
+    // Pool de stock con cantidades restantes
+    var pool = inventory.map(function (it) {
+      var qty = Number(it.qty) || 0;
+      return { type: it.type, value: it.value, total: qty, left: qty };
+    });
+
+    // Pase 1: matches exactos / equivalentes
     var lines = bom.map(function (line) {
-      var have = 0;
-      inventory.forEach(function (inv) {
-        if (componentMatches(line, inv)) have += Number(inv.qty) || 0;
-      });
       var need = Number(line.qty) || 0;
-      var covered = Math.min(need, have);
-      totalNeeded += need;
-      totalCovered += covered;
+      var have = 0;
+      var exact = 0;
+      pool.forEach(function (p) {
+        if (componentMatches(line, { type: p.type, value: p.value })) {
+          have += p.total;
+          var take = Math.min(need - exact, p.left);
+          if (take > 0) {
+            p.left -= take;
+            exact += take;
+          }
+        }
+      });
       return {
         type: line.type,
         value: line.value,
         note: line.note || null,
         need: need,
         have: have,
-        covered: covered,
-        missing: Math.max(0, need - have),
-        ok: have >= need,
+        exact: exact,
+        approx: 0,
+        subs: [],
       };
     });
 
+    // Pase 2: sustitutos de valor cercano (solo R, C y pots), experimental
+    if (opts.substitutes) {
+      lines.forEach(function (l) {
+        if (l.exact + l.approx >= l.need) return;
+        var target = numericValue(l.type, l.value);
+        if (target == null) return;
+        var wantDual = l.type === "pot" ? !!parsePot(l.value).dual : null;
+
+        pool
+          .map(function (p) {
+            if (p.type !== l.type || p.left <= 0) return null;
+            var v = numericValue(p.type, p.value);
+            if (v == null) return null;
+            if (l.type === "pot" && !!parsePot(p.value).dual !== wantDual) return null;
+            var diff = Math.abs(v - target) / Math.max(v, target);
+            // los que pasan NUMERIC_TOLERANCE ya se asignaron en el pase 1
+            if (diff <= NUMERIC_TOLERANCE || diff > tolerance) return null;
+            return { p: p, diff: diff };
+          })
+          .filter(Boolean)
+          .sort(function (a, b) { return a.diff - b.diff; })
+          .forEach(function (c) {
+            var missing = l.need - l.exact - l.approx;
+            if (missing <= 0) return;
+            var take = Math.min(missing, c.p.left);
+            if (take > 0) {
+              c.p.left -= take;
+              l.approx += take;
+              l.subs.push({ value: c.p.value, used: take });
+            }
+          });
+      });
+    }
+
+    // Totales
+    var totalNeeded = 0;
+    var totalExact = 0;
+    var totalApprox = 0;
+    lines.forEach(function (l) {
+      totalNeeded += l.need;
+      totalExact += l.exact;
+      totalApprox += l.approx;
+      l.covered = l.exact + l.approx;
+      l.missing = l.need - l.covered;
+      l.ok = l.missing === 0;
+    });
+    var totalCovered = totalExact + totalApprox;
+
     return {
       pct: totalNeeded ? Math.round((totalCovered / totalNeeded) * 100) : 0,
+      pctExact: totalNeeded ? Math.round((totalExact / totalNeeded) * 100) : 0,
       totalNeeded: totalNeeded,
       totalCovered: totalCovered,
+      totalApprox: totalApprox,
       lines: lines,
     };
   }
 
   /** Evalúa todos los pedales y los devuelve ordenados por % descendente. */
-  function rankPedals(pedals, inventory, hardware) {
+  function rankPedals(pedals, inventory, hardware, opts) {
     return pedals
       .map(function (p) {
-        var r = evaluatePedal(p, inventory, hardware);
+        var r = evaluatePedal(p, inventory, hardware, opts);
         return { pedal: p, result: r };
       })
       .sort(function (a, b) {

@@ -216,7 +216,9 @@ button.ghost.danger:hover { color: var(--danger); border-color: var(--danger); }
 }
 .bom-line .status { text-align: center; }
 .bom-line.ok .status { color: var(--accent-2); }
+.bom-line.ok.approx .status { color: var(--accent); }
 .bom-line.miss .status { color: var(--danger); }
+.bom-line .subs { color: var(--accent); font-size: .8rem; }
 .bom-line .have { color: var(--muted); font-variant-numeric: tabular-nums; }
 .bom-line.miss .have { color: var(--danger); }
 .bom-line .note { color: var(--muted); font-size: .8rem; }

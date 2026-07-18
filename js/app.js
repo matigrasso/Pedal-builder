@@ -135,7 +135,8 @@
   function renderPedals() {
     var includeHw = $("include-hardware").checked;
     var hardware = includeHw ? DB.hardware : null;
-    var ranked = M.rankPedals(DB.pedals, inventory, hardware);
+    var opts = { substitutes: $("allow-subs").checked };
+    var ranked = M.rankPedals(DB.pedals, inventory, hardware, opts);
     var box = $("pedal-list");
 
     box.innerHTML = ranked.map(function (entry) {
@@ -148,9 +149,10 @@
       var html = '<div class="pedal-card" data-id="' + p.id + '">' +
         '<div class="pedal-head" data-id="' + p.id + '">' +
         '<div class="pedal-title">' + esc(p.name) + ' <span class="brand">· ' + esc(p.brand) + "</span></div>" +
-        '<div class="pedal-pct ' + cls + '">' + r.pct + "%</div>" +
+        '<div class="pedal-pct ' + cls + '">' + (r.totalApprox ? "≈" : "") + r.pct + "%</div>" +
         '<div class="pedal-meta">' + esc(p.kind) + " · dificultad " + diff +
-        " · " + r.totalCovered + "/" + r.totalNeeded + " componentes</div>" +
+        " · " + r.totalCovered + "/" + r.totalNeeded + " componentes" +
+        (r.totalApprox ? " (" + r.totalApprox + " aprox.)" : "") + "</div>" +
         "</div>" +
         '<div class="progress"><div style="width:' + r.pct + '%"></div></div>';
 
@@ -160,10 +162,17 @@
           r.lines.map(function (l) {
             var label = TYPE_LABELS[l.type] + " " + l.value +
               (l.note ? ' <span class="note">— ' + esc(l.note) + "</span>" : "");
-            return '<div class="bom-line ' + (l.ok ? "ok" : "miss") + '">' +
-              '<span class="status">' + (l.ok ? "✔" : "✘") + "</span>" +
+            if (l.subs && l.subs.length) {
+              label += ' <span class="subs">⚠ sustituto: ' +
+                l.subs.map(function (s) { return s.used + "× " + esc(s.value); }).join(", ") +
+                "</span>";
+            }
+            var cls2 = l.ok ? (l.approx ? "ok approx" : "ok") : "miss";
+            var mark = l.ok ? (l.approx ? "≈" : "✔") : "✘";
+            return '<div class="bom-line ' + cls2 + '">' +
+              '<span class="status">' + mark + "</span>" +
               "<span>" + label + "</span>" +
-              '<span class="have">' + Math.min(l.have, l.need) + "/" + l.need + "</span>" +
+              '<span class="have">' + l.covered + "/" + l.need + "</span>" +
               "</div>";
           }).join("");
 
@@ -173,6 +182,8 @@
             missing.map(function (l) {
               return l.missing + "× " + l.value;
             }).join(", ") + "</div>";
+        } else if (r.totalApprox) {
+          html += '<div class="missing-summary">🧪 ¡Lo podés armar usando sustitutos aproximados! El resultado puede variar — experimentá.</div>';
         } else {
           html += '<div class="missing-summary">🎉 ¡Tenés todo para armarlo!</div>';
         }
@@ -248,6 +259,7 @@
   });
 
   $("include-hardware").addEventListener("change", renderPedals);
+  $("allow-subs").addEventListener("change", renderPedals);
 
   $("btn-clear").addEventListener("click", function () {
     if (inventory.length && confirm("¿Vaciar todo el inventario?")) {

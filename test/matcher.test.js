@@ -108,6 +108,59 @@ console.log("✔ todas las líneas de la DB parsean");
 eq(M.displayValue("resistor", "4k7"), "4.7kΩ", "display 4k7");
 eq(M.displayValue("capacitor", "0.047u"), "47nF", "display 0.047u");
 
+
+// ===== tests agregados: sustitutos aproximados y asignación de stock =====
+
+// Equivalencias nuevas
+eq(M.partsMatch("TL082", "TL072"), true, "TL082 ≈ TL072");
+eq(M.partsMatch("BS170", "2N7000"), true, "BS170 ≈ 2N7000");
+eq(M.partsMatch("A1015", "BC557"), true, "A1015 ≈ BC557 (PNP silicio)");
+eq(M.partsMatch("C945", "2N3904"), true, "C945 ≈ 2N3904 (NPN general)");
+eq(M.partsMatch("LM1458", "JRC4558D"), true, "LM1458 ≈ 4558");
+eq(M.partsMatch("1N4007", "1N4001"), true, "1N4007 ≈ 1N4001 (rectificador)");
+
+// Sustitutos: 120k cubre un faltante de 100k solo en modo experimental
+const subPedal = { id: "t", name: "t", circuit: [{ type: "resistor", value: "100k", qty: 2 }] };
+const subInv = [
+  { type: "resistor", value: "100k", qty: 1 },
+  { type: "resistor", value: "120k", qty: 5 },
+];
+const rNoSub = M.evaluatePedal(subPedal, subInv, null);
+eq(rNoSub.totalCovered, 1, "sin modo experimental: solo el exacto");
+const rSub = M.evaluatePedal(subPedal, subInv, null, { substitutes: true });
+eq(rSub.totalCovered, 2, "con sustitutos: 120k cubre el faltante");
+eq(rSub.totalApprox, 1, "1 unidad marcada como aproximada");
+eq(rSub.lines[0].subs[0].value, "120k", "registra qué sustituto usó");
+
+// Fuera de tolerancia: 220k NO sustituye a 100k
+const rFar = M.evaluatePedal(subPedal, [{ type: "resistor", value: "220k", qty: 5 }], null, { substitutes: true });
+eq(rFar.totalCovered, 0, "220k no sustituye a 100k (fuera de ±25%)");
+
+// El sustituto más cercano se usa primero
+const rNear = M.evaluatePedal(
+  { id: "t2", name: "t2", circuit: [{ type: "capacitor", value: "100n", qty: 1 }] },
+  [{ type: "capacitor", value: "82n", qty: 1 }, { type: "capacitor", value: "120n", qty: 1 }],
+  null, { substitutes: true }
+);
+eq(rNear.lines[0].subs[0].value, "120n", "elige el valor más cercano (120n antes que 82n)");
+
+// Asignación de stock: un solo pot 100k log no puede cubrir dos líneas
+const twoLines = { id: "t3", name: "t3", circuit: [
+  { type: "pot", value: "100k log", qty: 1 },
+  { type: "pot", value: "100k log", qty: 1 },
+] };
+const rAlloc = M.evaluatePedal(twoLines, [{ type: "pot", value: "100k log", qty: 1 }], null);
+eq(rAlloc.totalCovered, 1, "el stock se asigna, no se cuenta dos veces");
+
+// Sustitutos no roban stock ya asignado a un match exacto
+const mixed = { id: "t4", name: "t4", circuit: [
+  { type: "resistor", value: "100k", qty: 1 },
+  { type: "resistor", value: "82k", qty: 1 },
+] };
+const rMixed = M.evaluatePedal(mixed, [{ type: "resistor", value: "100k", qty: 1 }], null, { substitutes: true });
+eq(rMixed.lines[0].exact, 1, "el 100k va a la línea exacta");
+eq(rMixed.lines[1].approx, 0, "no queda stock para sustituir el 82k");
+
 if (failures) {
   console.error(`\n${failures} test(s) fallaron`);
   process.exit(1);

@@ -29,24 +29,27 @@ Tu inventario se guarda automáticamente en el navegador (localStorage) y podés
   necesarias, y lista exactamente qué te falta.
 - **Hardware opcional**: caja, jacks, footswitch y LED se pueden incluir o no
   en el cálculo con un checkbox.
+- **🧪 Modo experimental de sustitutos**: activándolo, resistencias, capacitores
+  y potenciómetros de valor cercano (±25%, aprox. un paso de la serie E12)
+  cuentan como sustitutos "aproximados". Se marcan con `≈` y te dice exactamente
+  qué valor estarías usando en lugar de cuál — el resultado sonoro puede variar,
+  de eso se trata experimentar. El stock se asigna de verdad: un mismo
+  componente nunca cubre dos líneas de la BOM a la vez, y los matches exactos
+  tienen prioridad sobre los aproximados.
 - En los potenciómetros, la curva (log/lin) se muestra pero no bloquea el
   match, porque en la práctica se sustituyen sin problema.
 
-## Pedales incluidos
+## Pedales incluidos (36)
 
-| Pedal | Tipo | Dificultad |
-|---|---|---|
-| Bazz Fuss | fuzz | ●○○○○ |
-| Electra Distortion | distorsión | ●○○○○ |
-| LPB-1 (Electro-Harmonix) | boost | ●○○○○ |
-| Rangemaster (Dallas) | boost | ●●○○○ |
-| Fuzz Face (Dallas Arbiter) | fuzz | ●●○○○ |
-| Distortion+ (MXR) | distorsión | ●●○○○ |
-| Tube Screamer TS808 (Ibanez) | overdrive | ●●●○○ |
-| RAT (ProCo) | distorsión | ●●●○○ |
-| Big Muff Pi (Electro-Harmonix) | fuzz | ●●●○○ |
-| Phase 90 (MXR) | modulación | ●●●●○ |
-| Klon Centaur | overdrive | ●●●●● |
+- **Fuzz**: Bazz Fuss · Fuzz Face · Big Muff Pi · Fuzzrite · Jordan Boss Tone ·
+  Harmonic Percolator · Super-Fuzz · Tone Bender MkII
+- **Overdrive**: Tube Screamer TS808 · Klon Centaur · Boss SD-1 · Blues Breaker ·
+  Timmy · OCD · Red Llama · Colorsound Power Boost
+- **Distorsión**: Electra · Distortion+ · RAT · DOD 250 · Boss DS-1 · Guv'nor
+- **Boost**: LPB-1 · Rangemaster · SHO Super Hard-On · Micro Amp
+- **Modulación**: Phase 90 · Phase 45 · Small Clone · CE-2 Chorus · EA Tremolo
+- **Compresor**: Dyna Comp · Orange Squeezer
+- **Otros**: Cry Baby GCB-95 (wah) · Green Ringer (octavador) · Rebote Delay (PT2399)
 
 ## ¿De dónde salen las BOM?
 
@@ -105,7 +108,6 @@ node test/matcher.test.js
 
 ## Ideas a futuro
 
-- Modo "flexible" que acepte valores cercanos de la serie E12 (±20%).
 - Lista de compras consolidada: qué comprar para completar N pedales.
 - Enlaces a esquemático/layout de cada pedal.
-- Más pedales: Boss DS-1, Small Clone, Orange Squeezer, tremolos…
+- Más pedales: siempre hay más pedales.
