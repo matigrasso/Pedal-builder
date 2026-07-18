@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pedal Builder — ¿Qué pedal puedo armar?</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <h1>🎸 Pedal Builder</h1>
+    <p class="tagline">Cargá los componentes que tenés y descubrí qué pedales podés armar — o cuán cerca estás.</p>
+  </header>
+
+  <main>
+    <!-- ============ INVENTARIO ============ -->
+    <section class="panel" id="inventory-panel">
+      <h2>Mi inventario</h2>
+
+      <form id="add-form" autocomplete="off">
+        <select id="comp-type" required>
+          <option value="resistor">Resistencia</option>
+          <option value="capacitor">Capacitor</option>
+          <option value="pot">Potenciómetro</option>
+          <option value="transistor">Transistor</option>
+          <option value="ic">Circuito integrado</option>
+          <option value="diode">Diodo</option>
+          <option value="led">LED</option>
+          <option value="hardware">Hardware</option>
+        </select>
+        <input type="text" id="comp-value" placeholder="valor / n° de parte" required>
+        <input type="number" id="comp-qty" value="1" min="1" required>
+        <button type="submit">＋ Agregar</button>
+      </form>
+      <p class="hint" id="value-hint">Ej: <code>4k7</code>, <code>47n</code>, <code>100k log</code>, <code>2N3904</code>, <code>1N4148</code>, <code>JRC4558D</code></p>
+      <p class="error hidden" id="add-error"></p>
+
+      <div class="inv-toolbar">
+        <span id="inv-count"></span>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" id="btn-example">Cargar ejemplo</button>
+        <button type="button" class="ghost" id="btn-export">Exportar JSON</button>
+        <button type="button" class="ghost" id="btn-import">Importar JSON</button>
+        <button type="button" class="ghost danger" id="btn-clear">Vaciar</button>
+        <input type="file" id="import-file" accept=".json" class="hidden">
+      </div>
+
+      <div id="inventory-list"></div>
+    </section>
+
+    <!-- ============ PEDALES ============ -->
+    <section class="panel" id="pedals-panel">
+      <h2>Pedales que podés armar</h2>
+      <label class="toggle">
+        <input type="checkbox" id="include-hardware">
+        Incluir hardware (caja, jacks, footswitch, LED) en el cálculo
+      </label>
+      <div id="pedal-list"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Las BOM son de referencia (basadas en esquemáticos públicos) y editables en <code>js/data.js</code>.
+       Tu inventario se guarda localmente en este navegador.</p>
+  </footer>
+
+  <script src="js/matcher.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
